@@ -1,9 +1,11 @@
-import numpy as np
-import torch
 import time
 
-from transformers import (GPT2LMHeadModel, GPT2Tokenizer,
-                          BertTokenizer, BertForMaskedLM)
+import numpy as np
+import torch
+from transformers import (BertForMaskedLM, BertTokenizer, ElectraForMaskedLM,
+                          ElectraTokenizer, GPT2LMHeadModel, GPT2Tokenizer,
+                          RobertaForMaskedLM, RobertaTokenizer)
+
 from .class_register import register_api
 
 
@@ -316,6 +318,208 @@ class BERTLM(AbstractLanguageChecker):
         # # print ('....', token)
         return token
 
+
+@register_api(name='RoBERTa')
+class RoBERTaLM(AbstractLanguageChecker):
+    def __init__(self, model_name_or_path="roberta-base"):
+        super(RoBERTaLM, self).__init__()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.tokenizer = RobertaTokenizer.from_pretrained(model_name_or_path)
+        self.model = RobertaForMaskedLM.from_pretrained(model_name_or_path)
+        self.model.to(self.device)
+        self.model.eval()
+        # RoBERTa-specific symbols
+        self.mask_tok = self.tokenizer.convert_tokens_to_ids(["<mask>"])[0]
+        self.pad = self.tokenizer.convert_tokens_to_ids(["<pad>"])[0]
+        print("Loaded RoBERTa model!")
+
+    def check_probabilities(self, in_text, topk=40, max_context=20, batch_size=20):
+        '''
+        Similar to BERT implementation but using RoBERTa tokenizer and model
+        RoBERTa uses <mask> token instead of [MASK]
+        '''
+        in_text = "<s> " + in_text + " </s>"
+        tokenized_text = self.tokenizer.tokenize(in_text)
+        # Construct target
+        y_toks = self.tokenizer.convert_tokens_to_ids(tokenized_text)
+        segments_ids = [0] * len(y_toks)
+        y = torch.tensor([y_toks]).to(self.device)
+        segments_tensor = torch.tensor([segments_ids]).to(self.device)
+
+        # Create batches of (x,y)
+        input_batches = []
+        target_batches = []
+        for min_ix in range(0, len(y_toks), batch_size):
+            max_ix = min(min_ix + batch_size, len(y_toks) - 1)
+            cur_input_batch = []
+            cur_target_batch = []
+            # Construct each batch
+            for running_ix in range(max_ix - min_ix):
+                tokens_tensor = y.clone()
+                mask_index = min_ix + running_ix
+                tokens_tensor[0, mask_index + 1] = self.mask_tok
+
+                # Reduce computational complexity by subsetting
+                min_index = max(0, mask_index - max_context)
+                max_index = min(tokens_tensor.shape[1] - 1, mask_index + max_context + 1)
+                tokens_tensor = tokens_tensor[:, min_index:max_index]
+                
+                # Add padding
+                needed_padding = max_context * 2 + 1 - tokens_tensor.shape[1]
+                if min_index == 0 and max_index == y.shape[1] - 1:
+                    left_needed = (max_context) - mask_index
+                    right_needed = needed_padding - left_needed
+                    p = torch.nn.ConstantPad1d((left_needed, right_needed), self.pad)
+                    tokens_tensor = p(tokens_tensor)
+                elif min_index == 0:
+                    p = torch.nn.ConstantPad1d((needed_padding, 0), self.pad)
+                    tokens_tensor = p(tokens_tensor)
+                elif max_index == y.shape[1] - 1:
+                    p = torch.nn.ConstantPad1d((0, needed_padding), self.pad)
+                    tokens_tensor = p(tokens_tensor)
+
+                cur_input_batch.append(tokens_tensor)
+                cur_target_batch.append(y[:, mask_index + 1])
+            cur_input_batch = torch.cat(cur_input_batch, dim=0)
+            cur_target_batch = torch.cat(cur_target_batch, dim=0)
+            input_batches.append(cur_input_batch)
+            target_batches.append(cur_target_batch)
+
+        real_topk = []
+        pred_topk = []
+
+        with torch.no_grad():
+            for src, tgt in zip(input_batches, target_batches):
+                logits = self.model(src, torch.zeros_like(src))[:, max_context + 1]
+                yhat = torch.softmax(logits, dim=-1)
+                sorted_preds = np.argsort(-yhat.data.cpu().numpy())
+                real_topk_pos = list([int(np.where(sorted_preds[i] == tgt[i].item())[0][0]) for i in range(yhat.shape[0])])
+                real_topk_probs = yhat[np.arange(0, yhat.shape[0], 1), tgt].data.cpu().numpy().tolist()
+                real_topk.extend(list(zip(real_topk_pos, real_topk_probs)))
+                pred_topk.extend([list(zip(self.tokenizer.convert_ids_to_tokens(sorted_preds[i][:topk]), yhat[i][sorted_preds[i][:topk]].data.cpu().numpy().tolist())) for i in range(yhat.shape[0])])
+
+        bpe_strings = [self.postprocess(s) for s in tokenized_text]
+        pred_topk = [[(self.postprocess(t[0]), t[1]) for t in pred] for pred in pred_topk]
+        payload = {'bpe_strings': bpe_strings, 'real_topk': real_topk, 'pred_topk': pred_topk}
+        return payload
+
+    def postprocess(self, token):
+        with_space = True
+        with_break = token == '</s>'
+        if token.startswith('Ġ'):
+            with_space = False
+            token = token[1:]
+        
+        if with_space:
+            token = '\u0120' + token
+        if with_break:
+            token = '\u010A' + token
+        return token
+
+
+@register_api(name='ELECTRA')
+class ELECTRALM(AbstractLanguageChecker):
+    def __init__(self, model_name_or_path="google/electra-large-discriminator"):
+        super(ELECTRALM, self).__init__()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.tokenizer = ElectraTokenizer.from_pretrained(model_name_or_path)
+        self.model = ElectraForMaskedLM.from_pretrained(model_name_or_path)
+        self.model.to(self.device)
+        self.model.eval()
+        self.mask_tok = self.tokenizer.convert_tokens_to_ids(["[MASK]"])[0]
+        self.pad = self.tokenizer.convert_tokens_to_ids(["[PAD]"])[0]
+        print("Loaded ELECTRA model!")
+
+    def check_probabilities(self, in_text, topk=40, max_context=20, batch_size=20):
+        '''
+        ELECTRA is a discriminative masked language model optimized for detecting replaced tokens.
+        Uses similar masking strategy to BERT but with superior discriminative power.
+        '''
+        in_text = "[CLS] " + in_text + " [SEP]"
+        tokenized_text = self.tokenizer.tokenize(in_text)
+        # Construct target
+        y_toks = self.tokenizer.convert_tokens_to_ids(tokenized_text)
+        segments_ids = [0] * len(y_toks)
+        y = torch.tensor([y_toks]).to(self.device)
+        segments_tensor = torch.tensor([segments_ids]).to(self.device)
+
+        # Create batches of (x,y)
+        input_batches = []
+        target_batches = []
+        for min_ix in range(0, len(y_toks), batch_size):
+            max_ix = min(min_ix + batch_size, len(y_toks) - 1)
+            cur_input_batch = []
+            cur_target_batch = []
+            # Construct each batch
+            for running_ix in range(max_ix - min_ix):
+                tokens_tensor = y.clone()
+                mask_index = min_ix + running_ix
+                tokens_tensor[0, mask_index + 1] = self.mask_tok
+
+                # Reduce computational complexity by subsetting
+                min_index = max(0, mask_index - max_context)
+                max_index = min(tokens_tensor.shape[1] - 1, mask_index + max_context + 1)
+                tokens_tensor = tokens_tensor[:, min_index:max_index]
+                
+                # Add padding
+                needed_padding = max_context * 2 + 1 - tokens_tensor.shape[1]
+                if min_index == 0 and max_index == y.shape[1] - 1:
+                    left_needed = (max_context) - mask_index
+                    right_needed = needed_padding - left_needed
+                    p = torch.nn.ConstantPad1d((left_needed, right_needed), self.pad)
+                    tokens_tensor = p(tokens_tensor)
+                elif min_index == 0:
+                    p = torch.nn.ConstantPad1d((needed_padding, 0), self.pad)
+                    tokens_tensor = p(tokens_tensor)
+                elif max_index == y.shape[1] - 1:
+                    p = torch.nn.ConstantPad1d((0, needed_padding), self.pad)
+                    tokens_tensor = p(tokens_tensor)
+
+                cur_input_batch.append(tokens_tensor)
+                cur_target_batch.append(y[:, mask_index + 1])
+            cur_input_batch = torch.cat(cur_input_batch, dim=0)
+            cur_target_batch = torch.cat(cur_target_batch, dim=0)
+            input_batches.append(cur_input_batch)
+            target_batches.append(cur_target_batch)
+
+        real_topk = []
+        pred_topk = []
+
+        with torch.no_grad():
+            for src, tgt in zip(input_batches, target_batches):
+                logits = self.model(src, torch.zeros_like(src))[:, max_context + 1]
+                yhat = torch.softmax(logits, dim=-1)
+                sorted_preds = np.argsort(-yhat.data.cpu().numpy())
+                real_topk_pos = list([int(np.where(sorted_preds[i] == tgt[i].item())[0][0]) for i in range(yhat.shape[0])])
+                real_topk_probs = yhat[np.arange(0, yhat.shape[0], 1), tgt].data.cpu().numpy().tolist()
+                real_topk.extend(list(zip(real_topk_pos, real_topk_probs)))
+                pred_topk.extend([list(zip(self.tokenizer.convert_ids_to_tokens(sorted_preds[i][:topk]), yhat[i][sorted_preds[i][:topk]].data.cpu().numpy().tolist())) for i in range(yhat.shape[0])])
+
+        bpe_strings = [self.postprocess(s) for s in tokenized_text]
+        pred_topk = [[(self.postprocess(t[0]), t[1]) for t in pred] for pred in pred_topk]
+        payload = {'bpe_strings': bpe_strings, 'real_topk': real_topk, 'pred_topk': pred_topk}
+        return payload
+
+    def postprocess(self, token):
+        with_space = True
+        with_break = token == '[SEP]'
+        if token.startswith('##'):
+            with_space = False
+            token = token[2:]
+
+        if with_space:
+            token = '\u0120' + token
+        if with_break:
+            token = '\u010A' + token
+        return token
+
+
+AVAILABLE_MODELS = {
+    "gpt-2-small": LM,
+    "BERT": BERTLM,
+    "RoBERTa": RoBERTaLM,
+    "ELECTRA": ELECTRALM  # Superior discriminative model for AI-generated text detection
+}
 
 def main():
     raw_text = """

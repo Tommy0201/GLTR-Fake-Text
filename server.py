@@ -145,6 +145,6 @@ else:
     except KeyError:
         print("Model {} not found. Make sure to register it.".format(
             args.model))
-        print("Loading GPT-2 instead.")
-        model = AVAILABLE_MODELS['gpt-2']
+        print("Loading GPT-2-small instead.")
+        model = AVAILABLE_MODELS['gpt-2-small']
     projects[args.model] = Project(model, args.model)
