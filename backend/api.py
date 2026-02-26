@@ -83,21 +83,27 @@ class LM(AbstractLanguageChecker):
         token_ids = self.enc(in_text, return_tensors='pt').data['input_ids'][0]
         token_ids = torch.concat([self.start_token, token_ids])
         # Forward through the model
-        output = self.model(token_ids.to(self.device))
-        all_logits = output.logits[:-1].detach().squeeze()
+        # Add batch dimension for model input [1, sequence_length]
+        output = self.model(token_ids.unsqueeze(0).to(self.device))
+        # Remove batch dimension and last token: [sequence_length-1, vocab_size]
+        all_logits = output.logits[0, :-1, :].detach()
         # construct target and pred
         # yhat = torch.softmax(logits[0, :-1], dim=-1)
-        all_probs = torch.softmax(all_logits, dim=1)
+        all_probs = torch.softmax(all_logits, dim=-1)
 
         y = token_ids[1:]
         # Sort the predictions for each timestep
-        sorted_preds = torch.argsort(all_probs, dim=1, descending=True).cpu()
+        sorted_preds = torch.argsort(all_probs, dim=-1, descending=True).cpu()
         # [(pos, prob), ...]
-        real_topk_pos = list(
-            [int(np.where(sorted_preds[i] == y[i].item())[0][0])
-             for i in range(y.shape[0])])
+        real_topk_pos = []
+        for i in range(y.shape[0]):
+            match = np.where(sorted_preds[i] == y[i].item())[0]
+            if match.size > 0:
+                real_topk_pos.append(int(match[0]))
+            else:
+                real_topk_pos.append(-1)  # Token not found in sorted predictions
         real_topk_probs = all_probs[np.arange(
-            0, y.shape[0], 1), y].data.cpu().numpy().tolist()
+            0, y.shape[0], 1), y.cpu().numpy()].data.cpu().numpy().tolist()
         real_topk_probs = list(map(lambda x: round(x, 5), real_topk_probs))
 
         real_topk = list(zip(real_topk_pos, real_topk_probs))
@@ -106,7 +112,7 @@ class LM(AbstractLanguageChecker):
 
         bpe_strings = [self.postprocess(s) for s in bpe_strings]
 
-        topk_prob_values, topk_prob_inds = torch.topk(all_probs, k=topk, dim=1)
+        topk_prob_values, topk_prob_inds = torch.topk(all_probs, k=topk, dim=-1)
 
         pred_topk = [list(zip(self.enc.convert_ids_to_tokens(topk_prob_inds[i]),
                               topk_prob_values[i].data.cpu().numpy().tolist()
