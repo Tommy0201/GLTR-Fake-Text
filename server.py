@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 import argparse
-import connexion
 import os
+
+import connexion
 import yaml
-from flask import send_from_directory, redirect
+from flask import redirect, send_from_directory
 from flask_cors import CORS
 
 # from backend.Project import Project # TODO !!
@@ -15,7 +16,7 @@ __author__ = 'Hendrik Strobelt, Sebastian Gehrmann'
 CONFIG_FILE_NAME = 'lmf.yml'
 projects = {}
 
-app = connexion.App(__name__, debug=False)
+app = connexion.App(__name__)
 
 
 class Project:
@@ -135,7 +136,7 @@ if __name__ == '__main__':
     if not args.no_cors:
         CORS(app.app, headers='Content-Type')
 
-    app.run(port=int(args.port), debug=not args.nodebug, host=args.address)
+    app.run(port=int(args.port), reload=not args.nodebug, host=args.address)
 else:
     args, _ = parser.parse_known_args()
     # load_projects(args.dir)
