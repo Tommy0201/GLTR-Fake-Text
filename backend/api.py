@@ -549,6 +549,11 @@ def main():
     In a shocking finding, scientist discovered a herd of unicorns living in a remote, previously unexplored valley, in the Andes Mountains. Even more surprising to the researchers was the fact that the unicorns spoke perfect English.
     """
 
+    def print_payload(payload):
+        print("  Tokens:   ", payload['bpe_strings'])
+        print("  real_topk:", payload['real_topk'])
+        print("  pred_topk (first token):", payload['pred_topk'][0])
+
     '''
     Tests for BERT
     '''
@@ -557,7 +562,7 @@ def main():
     payload = lm.check_probabilities(raw_text, topk=5)
     end = time.time()
     print("{:.2f} Seconds for a run with BERT".format(end - start))
-    # print("SAMPLE:", sample)
+    print_payload(payload)
 
     '''
     Tests for GPT-2
@@ -567,12 +572,33 @@ def main():
     payload = lm.check_probabilities(raw_text, topk=5)
     end = time.time()
     print("{:.2f} Seconds for a check with GPT-2".format(end - start))
+    print_payload(payload)
 
     start = time.time()
     sample = lm.sample_unconditional()
     end = time.time()
     print("{:.2f} Seconds for a sample from GPT-2".format(end - start))
     print("SAMPLE:", sample)
+
+    '''
+    Tests for RoBERTa
+    '''
+    lm = RoBERTaLM()
+    start = time.time()
+    payload = lm.check_probabilities(raw_text, topk=5)
+    end = time.time()
+    print("{:.2f} Seconds for a run with RoBERTa".format(end - start))
+    print_payload(payload)
+
+    '''
+    Tests for ELECTRA
+    '''
+    lm = ELECTRALM()
+    start = time.time()
+    payload = lm.check_probabilities(raw_text, topk=5)
+    end = time.time()
+    print("{:.2f} Seconds for a run with ELECTRA".format(end - start))
+    print_payload(payload)
 
 
 if __name__ == "__main__":
