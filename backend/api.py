@@ -139,7 +139,7 @@ class LM(AbstractLanguageChecker):
 
         '''
         context = torch.full((1, 1),
-                             self.enc.encoder[self.start_token],
+                             self.start_token.item(),
                              device=self.device,
                              dtype=torch.long)
         prev = context
@@ -148,7 +148,9 @@ class LM(AbstractLanguageChecker):
         # Forward through the model
         with torch.no_grad():
             for i in range(length):
-                logits, past = self.model(prev, past=past)
+                model_output = self.model(prev, past_key_values=past)
+                logits = model_output.logits
+                past = model_output.past_key_values
                 logits = logits[:, -1, :] / temperature
                 # Filter predictions to topk and softmax
                 probs = torch.softmax(top_k_logits(logits, k=topk),
@@ -273,7 +275,7 @@ class BERTLM(AbstractLanguageChecker):
             for src, tgt in zip(input_batches, target_batches):
                 # Compute one batch of inputs
                 # By construction, MASK is always the middle
-                logits = self.model(src, torch.zeros_like(src))[:,
+                logits = self.model(src, torch.zeros_like(src)).logits[:,
                          max_context + 1]
                 yhat = torch.softmax(logits, dim=-1)
 
@@ -390,7 +392,7 @@ class RoBERTaLM(AbstractLanguageChecker):
 
         with torch.no_grad():
             for src, tgt in zip(input_batches, target_batches):
-                logits = self.model(src, torch.zeros_like(src))[:, max_context + 1]
+                logits = self.model(src, torch.zeros_like(src)).logits[:, max_context + 1]
                 yhat = torch.softmax(logits, dim=-1)
                 sorted_preds = np.argsort(-yhat.data.cpu().numpy())
                 real_topk_pos = list([int(np.where(sorted_preds[i] == tgt[i].item())[0][0]) for i in range(yhat.shape[0])])
@@ -487,7 +489,7 @@ class ELECTRALM(AbstractLanguageChecker):
 
         with torch.no_grad():
             for src, tgt in zip(input_batches, target_batches):
-                logits = self.model(src, torch.zeros_like(src))[:, max_context + 1]
+                logits = self.model(src, torch.zeros_like(src)).logits[:, max_context + 1]
                 yhat = torch.softmax(logits, dim=-1)
                 sorted_preds = np.argsort(-yhat.data.cpu().numpy())
                 real_topk_pos = list([int(np.where(sorted_preds[i] == tgt[i].item())[0][0]) for i in range(yhat.shape[0])])
