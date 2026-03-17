@@ -1,0 +1,18 @@
+[
+  {
+    "file": "unicorn.json",
+    "description": "ELECTRA analysis: unicorn text - discriminative detection of replaced tokens"
+  },
+  {
+    "file": "gpt_2_small_top40_t0.7.json",
+    "description": "ELECTRA analysis: GPT-2 generated - best at spotting AI-generated patterns"
+  },
+  {
+    "file":   "NYTimes.json",
+    "description": "ELECTRA analysis: NYTimes article - authentic human-written text"
+  },
+  {
+    "file":   "paper_gan.json",
+    "description": "ELECTRA analysis: academic text - formal human writing analysis"
+  }
+]

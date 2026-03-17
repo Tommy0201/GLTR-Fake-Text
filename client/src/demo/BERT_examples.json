@@ -1,0 +1,18 @@
+[
+  {
+    "file": "unicorn.json",
+    "description": "BERT analysis: unicorn text (GPT2 large) - shows masked token predictions"
+  },
+  {
+    "file":   "NYTimes.json",
+    "description": "BERT analysis: NYTimes article - bidirectional context understanding"
+  },
+  {
+    "file":   "paper_gan.json",
+    "description": "BERT analysis: academic text - complex sentence structure detection"
+  },
+  {
+    "file": "gpt_2_small_top40_t0.7.json",
+    "description": "BERT analysis: GPT-2 generated text - baseline comparison"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "file": "unicorn.json",
+    "description": "RoBERTa analysis: unicorn text - robust MLM detection of anomalies"
+  },
+  {
+    "file":   "NYTimes.json",
+    "description": "RoBERTa analysis: NYTimes article - natural language fluency check"
+  },
+  {
+    "file":   "paper_gan.json",
+    "description": "RoBERTa analysis: academic text - high-quality human writing"
+  },
+  {
+    "file": "gpt_2_small_top40_t0.7.json",
+    "description": "RoBERTa analysis: GPT-2 text - improved detection vs BERT"
+  }
+]
