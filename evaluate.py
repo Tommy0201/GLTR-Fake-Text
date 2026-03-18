@@ -145,7 +145,7 @@ def save_csv(results, path):
     if not results:
         print("No results to save.")
         return
-    dest_path = "results/" + path
+    dest_path = "eval/results/" + path
     fieldnames = list(dict.fromkeys(k for row in results for k in row))
     with open(dest_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")

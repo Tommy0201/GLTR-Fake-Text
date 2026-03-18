@@ -64,12 +64,12 @@ def gltr_ai_score(row, thresholds):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--results",   default="results/results.csv",
+    parser.add_argument("--results",   default="eval/results/results.csv",
                         help="CSV produced by evaluate.py")
     parser.add_argument("--threshold", type=float, default=0.5,
                         help="Score >= threshold → AI  (default: 0.5)")
     parser.add_argument("--output",    type=str, default=None,
-                        help="Save per-row predictions to classify/<name>.csv")
+                        help="Save text report to classify/<name>.txt")
     args = parser.parse_args()
 
     rows = []
@@ -134,12 +134,27 @@ def main():
     print(f"Threshold : {args.threshold}")
 
     if args.output:
-        dest = os.path.join("classify", args.output)
-        with open(dest, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=list(prediction_rows[0].keys()))
-            writer.writeheader()
-            writer.writerows(prediction_rows)
-        print(f"Saved {len(prediction_rows)} rows → {dest}")
+        stem = args.output.rsplit(".", 1)[0]
+
+        txt_dest = os.path.join("eval", "classify", stem + ".txt")
+        with open(txt_dest, "w") as f:
+            f.write("Data-adaptive thresholds (median per class):\n")
+            for col, vals in thresholds.items():
+                direction = "↑ AI" if vals["ai"] > vals["human"] else "↓ AI"
+                f.write(f"  {col:<15}  human={vals['human']:.4f}  ai={vals['ai']:.4f}  {direction}\n")
+
+            f.write(f"\n{'GLTR':<12} {'True':<8} {'Score':>6}  {'Predicted':<14}  {'OK':>3}\n")
+            f.write("-" * 52 + "\n")
+            for pr in prediction_rows:
+                ok = "✓" if pr["correct"] else "✗"
+                f.write(f"{pr['gltr_model']:<12} {pr['true_label']:<8} {pr['score']:>6.3f}  {pr['predicted']:<14}  {ok:>3}\n")
+
+            f.write(f"\n{'='*52}\n")
+            f.write(f"Samples   : {total}  ({n_human} human, {n_ai} AI)\n")
+            f.write(f"Correct   : {correct}\n")
+            f.write(f"Accuracy  : {accuracy:.1%}\n")
+            f.write(f"Threshold : {args.threshold}\n")
+        print(f"Saved text report  → {txt_dest}")
 
 
 if __name__ == "__main__":
