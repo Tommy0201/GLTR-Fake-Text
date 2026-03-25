@@ -1,11 +1,6 @@
 """
 classify.py — Binary human vs AI detection using GLTR statistics.
 
-No training needed. Reads results.csv produced by evaluate.py,
-applies fixed GLTR thresholds, and prints accuracy.
-
-All AI model variants are collapsed into a single "ai" class.
-
 Usage:
     python classify.py --results results/results.csv
     python classify.py --results results/results.csv --threshold 0.5
