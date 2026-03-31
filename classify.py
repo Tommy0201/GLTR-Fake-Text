@@ -35,6 +35,7 @@ def compute_thresholds(rows):
     return thresholds
 
 
+
 def gltr_ai_score(row, thresholds):
     """
     Returns a score in [0, 1].  Higher = more likely AI-generated.

@@ -15,6 +15,7 @@ Usage:
 
 import argparse
 import csv
+import os
 import time
 
 import numpy as np
@@ -174,6 +175,48 @@ def load_argugpt(limit=None, splits=("train", "dev", "test")):
     return ai_rows
 
 
+def load_mgtbench(path, limit=None):
+    """Load a local MGTBench CSV and flatten human + model outputs."""
+    rows = []
+    with open(path, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None:
+            raise ValueError(f"Could not read header from {path}")
+
+        model_columns = [c for c in reader.fieldnames
+                         if c.lower() not in ("id", "prompt", "author_id", "author", "human")]
+
+        for i, row in enumerate(reader):
+            if limit is not None and i >= limit:
+                break
+
+            source_base = f"{os.path.basename(path)}:{row.get('id', i)}"
+            prompt = (row.get("prompt") or "").strip()
+
+            human_text = (row.get("human") or "").strip()
+            if human_text:
+                rows.append({
+                    "text":     human_text,
+                    "label":    "human",
+                    "source":   f"{source_base}:human",
+                    "ai_model": "human",
+                })
+
+            for model_name in model_columns:
+                model_text = (row.get(model_name) or "").strip()
+                if not model_text:
+                    continue
+                rows.append({
+                    "text":     model_text,
+                    "label":    "ai",
+                    "source":   f"{source_base}:{model_name}",
+                    "ai_model": model_name,
+                })
+
+    print(f"Loaded {len(rows)} rows from MGTBench file {path}")
+    return rows
+
+
 # ---------------------------------------------------------------------------
 # Evaluation loop
 # ---------------------------------------------------------------------------
@@ -280,12 +323,14 @@ def print_summary(results):
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate GLTR on text datasets")
-    parser.add_argument("--dataset", choices=["cheat", "hc3", "argugpt"], default="cheat",
-                        help="Dataset to use: 'cheat', 'hc3', or 'argugpt'")
+    parser.add_argument("--dataset", choices=["cheat", "hc3", "argugpt", "mgtbench"], default="cheat",
+                        help="Dataset to use: 'cheat', 'hc3', 'argugpt', or 'mgtbench'")
+    parser.add_argument("--file",    type=str, default=None,
+                        help="CSV file path for --dataset mgtbench (default: eval/mgtbench/Essay_LLMs.csv)")
     parser.add_argument("--limit",   type=int, default=100,
-                        help="Total samples to evaluate, split evenly human/AI (default: 100)")
-    parser.add_argument("--models",  nargs="+", default=["BERT"],
-                        help="GLTR models to run (default: BERT)")
+                        help="Number of source rows to load (default: 100) for mgtbench; otherwise total samples")
+    parser.add_argument("--models",  nargs="+", default=["gpt-2-small"],
+                        help="GLTR models to run (default: gpt-2-small)")
     parser.add_argument("--topk",    type=int, default=40)
     parser.add_argument("--output",  type=str, default=None,
                         help="Save results to this CSV path inside eval/results/")
@@ -295,6 +340,12 @@ def main():
         texts = load_hc3(limit=args.limit)
     elif args.dataset == "argugpt":
         texts = load_argugpt(limit=args.limit)
+    elif args.dataset == "mgtbench":
+        if args.file:
+            csv_path = "eval/mgtbench/" + args.file
+        else:
+            csv_path = "eval/mgtbench/Essay_LLMs.csv"
+        texts = load_mgtbench(csv_path, limit=args.limit)
     else:
         texts = load_cheat(limit=args.limit)
 
