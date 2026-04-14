@@ -1,4 +1,4 @@
-"""Train an SVM classifier from eval/train-dataset/train.csv or separate train/test files."""
+"""Train an SVM classifier from eval/train-dataset-stats/train.csv or separate train/test files."""
 
 import argparse
 import csv
@@ -48,7 +48,7 @@ def main():
     parser.add_argument(
         "--train-file",
         type=Path,
-        default=Path("eval/train-dataset/train4cols.csv"),
+        default=Path("eval/train-dataset-stats/train4cols.csv"),
         help="Path to training data CSV",
     )
     parser.add_argument(
@@ -101,15 +101,15 @@ if __name__ == "__main__":
 
 """
 Mixed/Combined:
-python3 train_svm.py --train-file eval/train-dataset/train4cols.csv --output models/svm_model.pkl
+python3 train_svm.py --train-file eval/train-dataset-stats/train4cols.csv --output models/svm_model.pkl
 
 Odd-One-Out:
-python3 train_svm.py --train-file eval/train-dataset/scenario1_train.csv --test-file eval/train-dataset/scenario1_test.csv --output models/svm_scenario1.pkl
-python3 train_svm.py --train-file eval/train-dataset/scenario2_train.csv --test-file eval/train-dataset/scenario2_test.csv --output models/svm_scenario2.pkl
-python3 train_svm.py --train-file eval/train-dataset/scenario3_train.csv --test-file eval/train-dataset/scenario3_test.csv --output models/svm_scenario3.pkl
+python3 train_svm.py --train-file eval/train-dataset-stats/scenario1_train.csv --test-file eval/train-dataset-stats/scenario1_test.csv --output models/svm_scenario1.pkl
+python3 train_svm.py --train-file eval/train-dataset-stats/scenario2_train.csv --test-file eval/train-dataset-stats/scenario2_test.csv --output models/svm_scenario2.pkl
+python3 train_svm.py --train-file eval/train-dataset-stats/scenario3_train.csv --test-file eval/train-dataset-stats/scenario3_test.csv --output models/svm_scenario3.pkl
 
 Odd-One-Out within MGTBench:
-python3 train_svm.py --train-file eval/train-dataset/mgtbench_essay_GPT2_train.csv --test-file eval/train-dataset/mgtbench_essay_GPT2_test.csv --output models/svm_mgt_essay.pkl
-python3 train_svm.py --train-file eval/train-dataset/mgtbench_reuters_GPT2_train.csv --test-file eval/train-dataset/mgtbench_reuters_GPT2_test.csv --output models/svm_mgt_reuters.pkl
-python3 train_svm.py --train-file eval/train-dataset/mgtbench_wp_GPT2_train.csv --test-file eval/train-dataset/mgtbench_wp_GPT2_test.csv --output models/svm_mgt_wp.pkl
+python3 train_svm.py --train-file eval/train-dataset-stats/mgtbench_essay_GPT2_train.csv --test-file eval/train-dataset-stats/mgtbench_essay_GPT2_test.csv --output models/svm_mgt_essay.pkl
+python3 train_svm.py --train-file eval/train-dataset-stats/mgtbench_reuters_GPT2_train.csv --test-file eval/train-dataset-stats/mgtbench_reuters_GPT2_test.csv --output models/svm_mgt_reuters.pkl
+python3 train_svm.py --train-file eval/train-dataset-stats/mgtbench_wp_GPT2_train.csv --test-file eval/train-dataset-stats/mgtbench_wp_GPT2_test.csv --output models/svm_mgt_wp.pkl
 """

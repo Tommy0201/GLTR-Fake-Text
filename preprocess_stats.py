@@ -122,8 +122,8 @@ def create_mgtbench_leave_one_out_scenarios(data, feature_columns=None):
         test_cols, test_rows = test_item['cols'], test_item['rows']
         
         scenario_name = f'mgtbench_{test_name.replace("mgtbench_", "")}'
-        train_path = Path('eval/train-dataset') / f'{scenario_name}_train.csv'
-        test_path = Path('eval/train-dataset') / f'{scenario_name}_test.csv'
+        train_path = Path('eval/train-dataset-stats') / f'{scenario_name}_train.csv'
+        test_path = Path('eval/train-dataset-stats') / f'{scenario_name}_test.csv'
         
         train_count = preprocess_and_save(train_rows, train_cols, train_path, feature_columns)
         test_count = preprocess_and_save(test_rows, test_cols, test_path, feature_columns)
@@ -170,12 +170,12 @@ def create_dataset_split(train_groups, test_groups, scenario_name, feature_colum
     
     # Combine train data
     train_cols, train_rows = combine_groups(data, train_groups)
-    train_path = Path('eval/train-dataset') / f'{scenario_name}_train.csv'
+    train_path = Path('eval/train-dataset-stats') / f'{scenario_name}_train.csv'
     train_count = preprocess_and_save(train_rows, train_cols, train_path, feature_columns)
     
     # Combine test data
     test_cols, test_rows = combine_groups(data, test_groups)
-    test_path = Path('eval/train-dataset') / f'{scenario_name}_test.csv'
+    test_path = Path('eval/train-dataset-stats') / f'{scenario_name}_test.csv'
     test_count = preprocess_and_save(test_rows, test_cols, test_path, feature_columns)
     
     print(f'Scenario {scenario_name}: Train {train_count} rows, Test {test_count} rows')
@@ -197,7 +197,7 @@ def combine_results():
 
 
 def preprocess_data(mixed_path: Path = ROOT / 'mixed.csv',
-                    output_path: Path = Path('eval/train-dataset/train.csv'),
+                    output_path: Path = Path('eval/train-dataset-stats/train.csv'),
                     feature_columns: list[str] | None = None):
     """Original preprocess function - kept for compatibility"""
     if not mixed_path.exists():
@@ -253,15 +253,19 @@ if __name__ == '__main__':
         'mean_rank',
         'perplexity',
     ]
-    
+    # Preparing mixed/combined data
+    combine_results()
+    preprocess_data(output_path="eval/train-dataset-stats/train4cols.csv", feature_columns=columns_four_features)
+    preprocess_data(output_path="eval/train-dataset-stats/train8cols.csv", feature_columns=columns_eight_features)    
+
     # # Scenario 1: Train on hc3 + cheat, Test on mgtbench
-    # create_dataset_split(['hc3', 'cheat'], ['mgtbench'], 'scenario1', columns_eight_features)
+    create_dataset_split(['hc3', 'cheat'], ['mgtbench'], 'scenario1', columns_eight_features)
     
     # # Scenario 2: Train on hc3 + mgtbench, Test on cheat
-    # create_dataset_split(['hc3', 'mgtbench'], ['cheat'], 'scenario2', columns_eight_features)
+    create_dataset_split(['hc3', 'mgtbench'], ['cheat'], 'scenario2', columns_eight_features)
     
     # # Scenario 3: Train on mgtbench + cheat, Test on hc3
-    # create_dataset_split(['mgtbench', 'cheat'], ['hc3'], 'scenario3', columns_eight_features)
+    create_dataset_split(['mgtbench', 'cheat'], ['hc3'], 'scenario3', columns_eight_features)
     
     
     # MGT Bench leave-one-out scenarios
