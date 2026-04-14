@@ -19,22 +19,24 @@ def read_rows(path):
 
 
 def load_data_by_group():
-    """Load data from all groups and return a dict of group_name: (columns, rows)"""
+    """Load data from all groups and return a dict of group_name: (columns, rows) or list for mgtbench"""
     data = {}
     
-    # Load mgtbench files
+    # Load mgtbench files individually
     mgtbench_files = sorted(ROOT.glob(MGTBENCH_PATTERN))
     if not mgtbench_files:
         raise SystemExit('No mgtbench files found')
     
-    mgtbench_rows = []
-    mgtbench_cols = set()
+    mgtbench_list = []
     for path in mgtbench_files:
         cols, rows = read_rows(path)
-        mgtbench_cols.update(cols)
-        mgtbench_rows.extend(rows)
-    random.shuffle(mgtbench_rows)
-    data['mgtbench'] = (list(mgtbench_cols), mgtbench_rows)
+        random.shuffle(rows)
+        mgtbench_list.append({
+            'name': path.stem,  # e.g., 'mgtbench_essay_GPT2'
+            'cols': cols,
+            'rows': rows
+        })
+    data['mgtbench'] = mgtbench_list
     
     # Load cheat
     if not CHEAT_FILE.exists():
@@ -61,14 +63,72 @@ def combine_groups(groups_data, group_names):
     for group_name in group_names:
         if group_name not in groups_data:
             raise SystemExit(f'Unknown group: {group_name}')
-        cols, rows = groups_data[group_name]
-        # Add new columns
-        for col in cols:
-            if col not in all_columns:
-                all_columns.append(col)
-        combined_rows.extend(rows)
+        group_data = data[group_name]
+        if group_name == 'mgtbench':
+            # mgtbench is a list of dicts
+            for item in group_data:
+                cols, rows = item['cols'], item['rows']
+                # Add new columns
+                for col in cols:
+                    if col not in all_columns:
+                        all_columns.append(col)
+                combined_rows.extend(rows)
+        else:
+            # Other groups are (cols, rows)
+            cols, rows = group_data
+            # Add new columns
+            for col in cols:
+                if col not in all_columns:
+                    all_columns.append(col)
+            combined_rows.extend(rows)
     
     return all_columns, combined_rows
+
+
+def combine_mgtbench_except(data, exclude_name):
+    """Combine all mgtbench files except the one specified"""
+    mgtbench_data = data['mgtbench']
+    all_columns = set()
+    combined_rows = []
+    
+    for item in mgtbench_data:
+        if item['name'] == exclude_name:
+            continue
+        cols, rows = item['cols'], item['rows']
+        all_columns.update(cols)
+        combined_rows.extend(rows)
+    
+    return list(all_columns), combined_rows
+
+
+def create_mgtbench_leave_one_out_scenarios(data, feature_columns=None):
+    """Create scenarios where each mgtbench file is test, others + hc3 + cheat are train"""
+    mgtbench_data = data['mgtbench']
+    
+    for test_item in mgtbench_data:
+        test_name = test_item['name']
+        
+        # Train: other mgtbench + hc3 + cheat
+        train_cols, train_rows = combine_mgtbench_except(data, test_name)
+        # Add hc3 and cheat
+        for group in ['hc3', 'cheat']:
+            cols, rows = data[group]
+            for col in cols:
+                if col not in train_cols:
+                    train_cols.append(col)
+            train_rows.extend(rows)
+        
+        # Test: the excluded mgtbench
+        test_cols, test_rows = test_item['cols'], test_item['rows']
+        
+        scenario_name = f'mgtbench_{test_name.replace("mgtbench_", "")}'
+        train_path = Path('eval/train-dataset') / f'{scenario_name}_train.csv'
+        test_path = Path('eval/train-dataset') / f'{scenario_name}_test.csv'
+        
+        train_count = preprocess_and_save(train_rows, train_cols, train_path, feature_columns)
+        test_count = preprocess_and_save(test_rows, test_cols, test_path, feature_columns)
+        
+        print(f'Scenario {scenario_name}: Train {train_count} rows, Test {test_count} rows')
 
 
 def preprocess_and_save(rows, columns, output_path, feature_columns):
@@ -194,11 +254,16 @@ if __name__ == '__main__':
         'perplexity',
     ]
     
-    # Scenario 1: Train on hc3 + cheat, Test on mgtbench
-    create_dataset_split(['hc3', 'cheat'], ['mgtbench'], 'scenario1', columns_eight_features)
+    # # Scenario 1: Train on hc3 + cheat, Test on mgtbench
+    # create_dataset_split(['hc3', 'cheat'], ['mgtbench'], 'scenario1', columns_eight_features)
     
-    # Scenario 2: Train on hc3 + mgtbench, Test on cheat
-    create_dataset_split(['hc3', 'mgtbench'], ['cheat'], 'scenario2', columns_eight_features)
+    # # Scenario 2: Train on hc3 + mgtbench, Test on cheat
+    # create_dataset_split(['hc3', 'mgtbench'], ['cheat'], 'scenario2', columns_eight_features)
     
-    # Scenario 3: Train on mgtbench + cheat, Test on hc3
-    create_dataset_split(['mgtbench', 'cheat'], ['hc3'], 'scenario3', columns_eight_features)
+    # # Scenario 3: Train on mgtbench + cheat, Test on hc3
+    # create_dataset_split(['mgtbench', 'cheat'], ['hc3'], 'scenario3', columns_eight_features)
+    
+    
+    # MGT Bench leave-one-out scenarios
+    data = load_data_by_group()
+    create_mgtbench_leave_one_out_scenarios(data, columns_eight_features)
