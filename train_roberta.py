@@ -1,4 +1,7 @@
-"""Fine-tune RoBERTa for binary classification (human vs AI-generated text) using text datasets."""
+"""Fine-tune RoBERTa for binary classification (human vs AI-generated text) using text datasets.
+
+Supports single file or combining multiple files for training scenarios like odd-one-out.
+"""
 
 import argparse
 import csv
@@ -57,6 +60,21 @@ def load_csv_data(path: Path):
     return texts, labels
 
 
+def combine_csv_files(file_paths):
+    """Combine multiple CSV files into a single dataset."""
+    all_texts = []
+    all_labels = []
+    
+    for file_path in file_paths:
+        texts, labels = load_csv_data(file_path)
+        all_texts.extend(texts)
+        all_labels.extend(labels)
+        print(f"Loaded {len(texts)} samples from {file_path.name}")
+    
+    print(f"Combined total: {len(all_texts)} samples")
+    return all_texts, all_labels
+
+
 def main():
     parser = argparse.ArgumentParser(description="Fine-tune RoBERTa on text classification datasets")
     parser.add_argument(
@@ -66,9 +84,21 @@ def main():
         help="Path to preprocessed training data CSV",
     )
     parser.add_argument(
+        "--train-files",
+        nargs="+",
+        type=Path,
+        help="List of preprocessed training data CSV files to combine (overrides --train-file)",
+    )
+    parser.add_argument(
         "--test-file",
         type=Path,
         help="Path to preprocessed test data CSV (if not provided, splits train-file into 80-20)",
+    )
+    parser.add_argument(
+        "--test-files",
+        nargs="+",
+        type=Path,
+        help="List of preprocessed test data CSV files to combine (overrides --test-file)",
     )
     parser.add_argument(
         "--output",
@@ -97,9 +127,17 @@ def main():
     torch.manual_seed(args.random_state)
 
     # Load training data
-    train_texts, train_labels = load_csv_data(args.train_file)
+    if args.train_files:
+        # Combine multiple training files
+        train_texts, train_labels = combine_csv_files(args.train_files)
+    else:
+        # Use single training file
+        train_texts, train_labels = load_csv_data(args.train_file)
 
-    if args.test_file:
+    if args.test_files:
+        # Combine multiple test files
+        test_texts, test_labels = combine_csv_files(args.test_files)
+    elif args.test_file:
         # Use separate test file
         test_texts, test_labels = load_csv_data(args.test_file)
     else:
@@ -126,7 +164,7 @@ def main():
         learning_rate=args.learning_rate,
         lr_scheduler_type=args.lr_scheduler_type,
         warmup_steps=args.warmup_steps,
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
@@ -169,3 +207,20 @@ if __name__ == "__main__":
     main()
     
     
+    
+""" TRAINING COMMAND
+All Mixed
+python train_roberta.py \      
+  --train-files train-dataset-text/{cheat, hc3, Essay_LLMs, Reuters_LLMs, WP_LLMs}_processed.csv \
+  --output models/roberta/roberta_mixed \
+  --epochs 1 --lr-scheduler-type cosine --warmup-steps 200
+
+
+
+No MGTBench
+python train_roberta.py \
+  --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv \
+  --test-files train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv train-dataset-text/WP_LLMs_processed.csv \
+  --output models/roberta/roberta_no_mgt \
+  --epochs 1 --lr-scheduler-type cosine --warmup-steps 200
+"""

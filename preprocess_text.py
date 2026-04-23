@@ -60,6 +60,10 @@ def preprocess_mgtbench_file(input_file: Path, output_file: Path):
         print(f"Warning: No valid text found in {input_file}")
         return
     
+    # Shuffle the dataset
+    import random
+    random.shuffle(rows)
+    
     # Save to output file
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with open(output_file, "w", newline="", encoding="utf-8") as f:
@@ -67,7 +71,7 @@ def preprocess_mgtbench_file(input_file: Path, output_file: Path):
         writer.writeheader()
         writer.writerows(rows)
     
-    print(f"Processed {len(rows)} rows: {input_file.name} → {output_file.name}")
+    print(f"Processed and shuffled {len(rows)} rows: {input_file.name} → {output_file.name}")
 
 
 def load_and_preprocess_cheat(limit=5000):
@@ -116,7 +120,12 @@ def load_and_preprocess_cheat(limit=5000):
     ai_rows = ai_rows[:limit - half]
     
     result = human_rows + ai_rows
-    print(f"Loaded {len(result)} samples from CHEAT — {len(human_rows)} human, {len(ai_rows)} AI")
+    
+    # Shuffle the combined dataset
+    import random
+    random.shuffle(result)
+    
+    print(f"Loaded and shuffled {len(result)} samples from CHEAT — {len(human_rows)} human, {len(ai_rows)} AI")
     return result
 
 
@@ -172,7 +181,12 @@ def load_and_preprocess_hc3(limit=3000):
     ai_rows = ai_rows[:limit - half]
     
     result = human_rows + ai_rows
-    print(f"Loaded {len(result)} samples from HC3 — {len(human_rows)} human, {len(ai_rows)} AI")
+    
+    # Shuffle the combined dataset
+    import random
+    random.shuffle(result)
+    
+    print(f"Loaded and shuffled {len(result)} samples from HC3 — {len(human_rows)} human, {len(ai_rows)} AI")
     return result
 
 
@@ -197,15 +211,15 @@ def main():
     output_dir = Path("train-dataset-text")
     
     # Process MGTBench files
-    # print("=" * 70)
-    # print("Processing MGTBench files...")
-    # print("=" * 70)
-    # if mgtbench_dir.exists():
-    #     for csv_file in mgtbench_dir.glob("*.csv"):
-    #         output_file = output_dir / f"{csv_file.stem}_processed.csv"
-    #         preprocess_mgtbench_file(csv_file, output_file)
-    # else:
-    #     print(f"Warning: {mgtbench_dir} not found, skipping MGTBench")
+    print("=" * 70)
+    print("Processing MGTBench files...")
+    print("=" * 70)
+    if mgtbench_dir.exists():
+        for csv_file in mgtbench_dir.glob("*.csv"):
+            output_file = output_dir / f"{csv_file.stem}_processed.csv"
+            preprocess_mgtbench_file(csv_file, output_file)
+    else:
+        print(f"Warning: {mgtbench_dir} not found, skipping MGTBench")
     
     # Process CHEAT dataset from HuggingFace
     print("\n" + "=" * 70)

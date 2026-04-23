@@ -3,3 +3,5 @@ client/src/.cache-loader
 node_modules
 .venv
 eval/
+models/roberta/roberta_mixed/*
+models/roberta/roberta_no_mgt/*
