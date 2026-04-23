@@ -8,6 +8,7 @@ import csv
 from pathlib import Path
 
 import torch
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.utils.data import Dataset
 from transformers import (RobertaForSequenceClassification, RobertaTokenizer,
                           Trainer, TrainingArguments)
@@ -167,7 +168,7 @@ def main():
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
-        metric_for_best_model="accuracy",
+        metric_for_best_model="f1",
         greater_is_better=True,
         logging_dir=str(args.output / "logs"),
         logging_steps=10,
@@ -178,8 +179,16 @@ def main():
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
         predictions = predictions.argmax(axis=1)
-        accuracy = (predictions == labels).mean()
-        return {"accuracy": accuracy}
+        accuracy = accuracy_score(labels, predictions)
+        f1 = f1_score(labels, predictions, average='binary')
+        precision = precision_score(labels, predictions, average='binary')
+        recall = recall_score(labels, predictions, average='binary')
+        return {
+            "accuracy": accuracy,
+            "f1": f1,
+            "precision": precision,
+            "recall": recall,
+        }
 
     # Trainer
     trainer = Trainer(
@@ -195,7 +204,16 @@ def main():
 
     # Evaluate
     results = trainer.evaluate()
-    print(f"Test results: {results}")
+
+    # Print results in a formatted way
+    print("\n" + "="*60)
+    print("TEST RESULTS")
+    print("="*60)
+    print(f"Accuracy:  {results.get('eval_accuracy', 0):.4f}")
+    print(f"F1 Score:  {results.get('eval_f1', 0):.4f}")
+    print(f"Precision: {results.get('eval_precision', 0):.4f}")
+    print(f"Recall:    {results.get('eval_recall', 0):.4f}")
+    print("="*60)
 
     # Save model
     trainer.save_model(str(args.output))
@@ -214,6 +232,28 @@ python train_roberta.py \
   --train-files train-dataset-text/{cheat, hc3, Essay_LLMs, Reuters_LLMs, WP_LLMs}_processed.csv \
   --output models/roberta/roberta_mixed \
   --epochs 1 --lr-scheduler-type cosine --warmup-steps 200
+  
+  
+  No Essay
+  
+screen -d -S no_mgt_essay -m python train_roberta.py \
+  --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv train-dataset-text/Reuters_LLMs_processed.csv train-dataset-text/WP_LLMs_processed.csv \
+  --test-file train-dataset-text/Essay_LLMs_processed.csv \
+  --output models/roberta/roberta_no_essay \
+  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 300
+  
+  
+screen -d -S no_mgt_reuters -m python train_roberta.py \
+  --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/WP_LLMs_processed.csv \
+  --test-file train-dataset-text/Reuters_LLMs_processed.csv \
+  --output models/roberta/roberta_no_reuters \
+  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 300
+  
+screen -d -S no_mgt_wp -m python train_roberta.py \
+  --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv \
+  --test-file train-dataset-text/WP_LLMs_processed.csv \
+  --output models/roberta/roberta_no_wp \
+  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 300
 
 
 
