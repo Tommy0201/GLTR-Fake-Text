@@ -8,7 +8,8 @@ import csv
 from pathlib import Path
 
 import torch
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import (accuracy_score, f1_score, precision_score,
+                             recall_score)
 from torch.utils.data import Dataset
 from transformers import (RobertaForSequenceClassification, RobertaTokenizer,
                           Trainer, TrainingArguments)
@@ -240,21 +241,28 @@ screen -d -S no_mgt_essay -m python train_roberta.py \
   --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv train-dataset-text/Reuters_LLMs_processed.csv train-dataset-text/WP_LLMs_processed.csv \
   --test-file train-dataset-text/Essay_LLMs_processed.csv \
   --output models/roberta/roberta_no_essay \
-  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 300
-  
+  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 100
   
 screen -d -S no_mgt_reuters -m python train_roberta.py \
   --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/WP_LLMs_processed.csv \
   --test-file train-dataset-text/Reuters_LLMs_processed.csv \
   --output models/roberta/roberta_no_reuters \
-  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 300
+  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 100
   
 screen -d -S no_mgt_wp -m python train_roberta.py \
   --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv \
   --test-file train-dataset-text/WP_LLMs_processed.csv \
   --output models/roberta/roberta_no_wp \
-  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 300
+  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 100
 
+
+
+  
+screen -d -S no_mgt_wp -m python train_roberta.py \
+  --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv \
+  --test-file train-dataset-text/WP_LLMs_processed.csv \
+  --output models/roberta/roberta_no_wp \
+  --batch-size 8 --epochs 1 --lr-scheduler-type cosine --warmup-steps 200
 
 
 No MGTBench
@@ -263,4 +271,21 @@ python train_roberta.py \
   --test-files train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv train-dataset-text/WP_LLMs_processed.csv \
   --output models/roberta/roberta_no_mgt \
   --epochs 1 --lr-scheduler-type cosine --warmup-steps 200
-"""
+  
+ No HC3
+ screen -d -S no_hc3 -m python train_roberta.py \
+  --train-files train-dataset-text/cheat_processed.csv train-dataset-text/WP_LLMs_processed.csv train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv \
+  --test-file train-dataset-text/hc3_processed.csv  \
+  --output models/roberta/roberta_no_hc3 \
+  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 100
+  
+  
+No CHEAT
+ screen -d -S no_cheat -m python train_roberta.py \
+  --train-files train-dataset-text/hc3_processed.csv train-dataset-text/WP_LLMs_processed.csv train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv \
+  --test-file train-dataset-text/cheat_processed.csv  \
+  --output models/roberta/roberta_no_cheat \
+  --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 100
+
+
+""""""
