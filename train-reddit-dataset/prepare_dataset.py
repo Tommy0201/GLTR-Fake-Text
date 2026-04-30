@@ -19,7 +19,8 @@ MIN_TEXT_LENGTH = 50
 
 
 def extract_text(record: dict) -> str:
-    """Return the best text content: selftext if substantive, else title."""
+    if precomputed := (record.get("text") or "").strip():
+        return precomputed
     selftext = (record.get("selftext") or "").strip()
     title = (record.get("title") or "").strip()
     if len(selftext) >= MIN_TEXT_LENGTH:
