@@ -8,7 +8,7 @@ Usage:
     export OPENAI_API_KEY=sk-...
 
     # Generate AI dataset and combine:
-    python generate_gpt_dataset.py \
+    python3 generate_gpt_dataset.py \
         --input  reddit_dataset_combined.csv \
         --output gpt_dataset.csv \
         --combined combined_dataset.csv
