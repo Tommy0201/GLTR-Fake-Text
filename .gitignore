@@ -6,5 +6,6 @@ eval/
 models/roberta/roberta_mixed/*
 models/roberta/roberta_no_mgt/*
 models/roberta/
-train-reddit-dataset/*.jsonl
+train-reddit-dataset/raw/*.jsonl
+train-reddit-dataset/raw/*.csv
 train-reddit-dataset/*.csv
