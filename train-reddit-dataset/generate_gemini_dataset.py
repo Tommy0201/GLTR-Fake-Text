@@ -8,11 +8,12 @@ Usage:
     export GEMINI_API_KEY=...
 
     # Generate AI dataset and combine:
+    
     python3 generate_gemini_dataset.py \
-        --input  reddit_dataset_combined.csv \
-        --limit 10 \
-        --output gemini_dataset.csv \
-        --combined combined_dataset.csv
+        --input  reddit_first_half.csv \
+        --output gemini/gemini_dataset.csv \
+        --limit 2
+        --combined gemini_combined_dataset.csv
 
     # Dry-run first 10 rows:
     python3 generate_gemini_dataset.py --input reddit_dataset_combined.csv --limit 10 \
@@ -34,7 +35,7 @@ import time
 import google.generativeai as genai
 
 MODEL = "gemini-3-flash-preview"
-CONCURRENCY = 20        # simultaneous API requests
+CONCURRENCY = 5        # simultaneous API requests
 BATCH_SAVE_EVERY = 100  # write checkpoint after this many completions
 
 SYSTEM_PROMPT = (
@@ -72,7 +73,9 @@ async def rewrite_one(
         try:
             async with semaphore:
                 resp = await model.generate_content_async(prompt)
-            return row["id"], resp.text.strip()
+            result = row["id"], resp.text.strip()
+            await asyncio.sleep(0.5)
+            return result
         except Exception as e:
             err = str(e)
             if "404" in err:

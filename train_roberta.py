@@ -266,11 +266,13 @@ screen -d -S no_mgt_wp -m python train_roberta.py \
 
 
 No MGTBench
-python train_roberta.py \
-  --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv \
-  --test-files train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv train-dataset-text/WP_LLMs_processed.csv \
-  --output models/roberta/roberta_no_mgt \
-  --epochs 1 --lr-scheduler-type cosine --warmup-steps 200
+python train_roberta.py --train-files train-dataset-text/cheat_processed.csv train-dataset-text/hc3_processed.csv --test-files train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv train-dataset-text/WP_LLMs_processed.csv --output models/roberta/roberta_no_mgt --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 200
+  
+  
+
+  
+  
+python train_roberta.py --train-files train-dataset-text/hc3_processed.csv train-dataset-text/WP_LLMs_processed.csv train-dataset-text/Essay_LLMs_processed.csv train-dataset-text/Reuters_LLMs_processed.csv --test-file train-dataset-text/cheat_processed.csv  --output models/roberta/roberta_no_cheat --batch-size 16 --epochs 1 --lr-scheduler-type cosine --warmup-steps 200
   
  No HC3
  screen -d -S no_hc3 -m python train_roberta.py \

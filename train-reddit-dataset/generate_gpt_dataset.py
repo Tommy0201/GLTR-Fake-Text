@@ -7,11 +7,18 @@ Labels:  0 = human (Reddit)   1 = AI (GPT-rewritten)
 Usage:
     export OPENAI_API_KEY=sk-...
 
+    # Generate AI dataset and NOT COMBINE
+    python3 generate_gpt_dataset.py \
+        --input  reddit_first_half.csv \
+        --output gpt/gpt_dataset.csv \
+        --limit 10
+        
     # Generate AI dataset and combine:
     python3 generate_gpt_dataset.py \
         --input  reddit_dataset_combined.csv \
         --output gpt_dataset.csv \
-        --combined combined_dataset.csv
+        --combined combined_dataset.csv \
+        --limit 10
 
     # Dry-run first 20 rows to check cost/output:
     python generate_gpt_dataset.py --input reddit_dataset_combined.csv --limit 20
@@ -33,7 +40,7 @@ from pathlib import Path
 import openai
 
 MODEL = "gpt-4o-mini"
-CONCURRENCY = 20         # simultaneous API requests
+CONCURRENCY = 5          # simultaneous API requests
 BATCH_SAVE_EVERY = 100   # write checkpoint after this many completions
 
 SYSTEM_PROMPT = (
@@ -80,7 +87,9 @@ async def rewrite_one(
                     ],
                     temperature=0.9,
                 )
-            return row["id"], resp.choices[0].message.content.strip()
+            result = row["id"], resp.choices[0].message.content.strip()
+            await asyncio.sleep(0.5)
+            return result
         except openai.RateLimitError as e:
             wait = 2 ** attempt * 5
             print(f"  [rate limit] id={row['id']}: {e}", flush=True)

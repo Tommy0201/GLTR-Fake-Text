@@ -95,7 +95,7 @@ def write_jsonl(records: list[dict], path: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n", type=int, default=10_000, help="Records to sample per file")
+    parser.add_argument("--n", type=int, default=3_333, help="Records to sample per file")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--out-dir", default=".", help="Directory for output files")
     args = parser.parse_args()
