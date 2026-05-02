@@ -9,3 +9,6 @@ models/roberta/
 train-reddit-dataset/raw/*.jsonl
 train-reddit-dataset/raw/*.csv
 train-reddit-dataset/*.csv
+train-reddit-dataset/gemini
+train-reddit-dataset/gpt
+
