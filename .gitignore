@@ -6,9 +6,14 @@ eval/
 models/roberta/roberta_mixed/*
 models/roberta/roberta_no_mgt/*
 models/roberta/
+
 train-reddit-dataset/raw/*.jsonl
 train-reddit-dataset/raw/*.csv
 train-reddit-dataset/*.csv
 train-reddit-dataset/gemini
 train-reddit-dataset/gpt
+
+train-news_dataset/gpt
+train-news_dataset/gemini
+train-news-dataset/*.csv
 
