@@ -39,7 +39,7 @@ from pathlib import Path
 
 import openai
 
-MODEL = "gpt-4o-mini"
+MODEL = "gpt-5.4"
 CONCURRENCY = 5          # simultaneous API requests
 BATCH_SAVE_EVERY = 100   # write checkpoint after this many completions
 

@@ -13,7 +13,10 @@ train-reddit-dataset/*.csv
 train-reddit-dataset/gemini
 train-reddit-dataset/gpt
 
-train-news_dataset/gpt
+train-news_dataset/gpt/*.csv
+train-news_dataset/gpt/*.json
+train-news_dataset/gemini/*.json
+train-news_dataset/gemini/*.csv
 train-news_dataset/gemini
 train-news-dataset/*.csv
 

@@ -12,10 +12,10 @@ Usage:
         
     # Generate AI dataset and combine:
     python3 generate_gpt.py \
-        --input  reddit_dataset_combined.csv \
-        --output gpt_dataset.csv \
-        --combined combined_dataset.csv \
-        --limit 10
+        --input  articles_content_even.csv \
+        --output gpt/titles.csv \
+        --mode title
+        --limit 2
 
     # Dry-run first 20 rows to check cost/output:
     python generate_gpt.py --input reddit_dataset_combined.csv --limit 20
@@ -61,18 +61,19 @@ def save_checkpoint(path: str, done: dict[str, str]) -> None:
 
 
 def read_human_csv(path: str) -> list[dict]:
+    csv.field_size_limit(sys.maxsize)
     with open(path, newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
 
 async def rewrite_one(
     client: openai.AsyncOpenAI,
-    row: dict,
+    row_id: str,
+    text: str,
     semaphore: asyncio.Semaphore,
     retries: int = 3,
 ) -> tuple[str, str | None]:
     """Return (id, generated_text | None on failure)."""
-    text = row.get("content") or row.get("text", "")
     for attempt in range(retries):
         try:
             async with semaphore:
@@ -84,27 +85,28 @@ async def rewrite_one(
                     ],
                     temperature=0.9,
                 )
-            result = row["id"], resp.choices[0].message.content.strip()
+            result = row_id, resp.choices[0].message.content.strip()
             await asyncio.sleep(0.5)
             return result
         except openai.RateLimitError as e:
             wait = 2 ** attempt * 5
-            print(f"  [rate limit] id={row['id']}: {e}", flush=True)
+            print(f"  [rate limit] id={row_id}: {e}", flush=True)
             print(f"  waiting {wait}s …", flush=True)
             await asyncio.sleep(wait)
         except openai.AuthenticationError as e:
             print(f"  [auth error] check your OPENAI_API_KEY: {e}", flush=True)
-            return row["id"], None
+            return row_id, None
         except openai.APIError as e:
-            print(f"  [api error] id={row['id']}: {e}", flush=True)
+            print(f"  [api error] id={row_id}: {e}", flush=True)
             await asyncio.sleep(2)
-    return row["id"], None
+    return row_id, None
 
 
 async def generate_all(
     rows: list[dict],
     checkpoint: dict[str, str],
     checkpoint_path: str,
+    mode: str,
 ) -> dict[str, str]:
     pending = [r for r in rows if r["id"] not in checkpoint]
     print(f"  {len(checkpoint)} already done, {len(pending)} remaining")
@@ -115,7 +117,7 @@ async def generate_all(
     client = openai.AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
     semaphore = asyncio.Semaphore(CONCURRENCY)
     done = dict(checkpoint)
-    tasks = [rewrite_one(client, r, semaphore) for r in pending]
+    tasks = [rewrite_one(client, r["id"], r.get(mode, ""), semaphore) for r in pending]
 
     completed = 0
     start = time.time()
@@ -145,8 +147,8 @@ async def generate_all(
     return done
 
 
-def write_gpt_csv(rows: list[dict], generated: dict[str, str], out_path: str) -> int:
-    fieldnames = ["id", "article_id", "title", "content", "label"]
+def write_gpt_csv(rows: list[dict], generated: dict[str, str], out_path: str, mode: str) -> int:
+    fieldnames = ["id", "article_id", mode, "label"]
     written = 0
     with open(out_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -158,8 +160,7 @@ def write_gpt_csv(rows: list[dict], generated: dict[str, str], out_path: str) ->
             writer.writerow({
                 "id": row["id"],
                 "article_id": row.get("article_id", ""),
-                "title": row.get("title", ""),
-                "content": gpt_text,
+                mode: gpt_text,
                 "label": 1,
             })
             written += 1
@@ -197,6 +198,8 @@ def main():
     parser.add_argument("--limit", type=int, default=None,
                         help="Only process the first N rows (for testing)")
     parser.add_argument("--model", default=MODEL)
+    parser.add_argument("--mode", choices=["title", "content"], default="content",
+                        help="Which field to paraphrase: 'title' or 'content'")
     args = parser.parse_args()
 
     if not os.environ.get("OPENAI_API_KEY"):
@@ -219,22 +222,23 @@ def main():
 
     print(f"Input:  {input_path}  ({len(rows)} rows)")
     print(f"Model:  {MODEL}")
+    print(f"Mode:   {args.mode}")
     print(f"Output: {args.output}")
 
-    generated = asyncio.run(generate_all(rows, checkpoint, checkpoint_path))
+    generated = asyncio.run(generate_all(rows, checkpoint, checkpoint_path, args.mode))
 
-    n_written = write_gpt_csv(rows, generated, args.output)
+    n_written = write_gpt_csv(rows, generated, args.output, args.mode)
     print(f"\nGPT dataset: {n_written} rows written to {args.output}")
 
-    if args.combined:
-        n_combined = write_combined_csv(input_path, args.output, args.combined)
-        print(f"Combined dataset: {n_combined} rows written to {args.combined}")
-        label_counts = {}
-        with open(args.combined, newline="", encoding="utf-8") as f:
-            for r in csv.DictReader(f):
-                label_counts[r["label"]] = label_counts.get(r["label"], 0) + 1
-        print(f"  label=0 (human): {label_counts.get('0', 0)}")
-        print(f"  label=1 (AI):    {label_counts.get('1', 0)}")
+    # if args.combined:
+    #     n_combined = write_combined_csv(input_path, args.output, args.combined)
+    #     print(f"Combined dataset: {n_combined} rows written to {args.combined}")
+    #     label_counts = {}
+    #     with open(args.combined, newline="", encoding="utf-8") as f:
+    #         for r in csv.DictReader(f):
+    #             label_counts[r["label"]] = label_counts.get(r["label"], 0) + 1
+    #     print(f"  label=0 (human): {label_counts.get('0', 0)}")
+    #     print(f"  label=1 (AI):    {label_counts.get('1', 0)}")
 
 
 if __name__ == "__main__":
