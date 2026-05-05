@@ -10,10 +10,10 @@ Usage:
     # Generate AI dataset and combine:
     
     #ARTICLE BODY
-    python3 generate_gemini.py --input articles_content_10k.csv --output gemini/content.csv --mode content --limit 5
+    python3 generate_gemini.py --input articles_content_even.csv --output gemini/content.csv --mode content --limit 5
 
 
-    python3 generate_gemini.py --input articles_content_10k.csv --output gemini/titles.csv --mode title --limit 5
+    python3 generate_gemini.py --input articles_content_even.csv --output gemini/titles.csv --mode title --limit 5
 
 
     #TITLE ONLY
